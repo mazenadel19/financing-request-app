@@ -3,9 +3,10 @@ import { Country, fetchCountriesAndCurrencies } from '@/services/endpoints/count
 import { submitFinancingRequest } from '@/services/endpoints/financing-request'
 import { FinancingRequestSchema } from '@/validation/financing-request'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, Box, Button, CircularProgress, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, CircularProgress, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'react-toastify'
 import { z } from 'zod'
 
 const today = new Date()
@@ -38,6 +39,25 @@ const FinancingRequest = () => {
     const watchedCountry = watch('countryCode')
     const isOpec = OPEC_COUNTRIES.includes(watchedCountry)
 
+    const onSubmit = async (formData: z.infer<typeof FinancingRequestSchema>) => {
+        setSubmitSuccess(null)
+        setSubmitError(null)
+        setSubmitLoading(true)
+        try {
+            const response = await submitFinancingRequest(formData)
+            if (response?.data?.message === 'success') {
+                setSubmitSuccess('Request submitted successfully!')
+                reset(INITIAL_FINANCING_REQUEST_STATE)
+            } else {
+                setSubmitError('Unexpected response from server.')
+            }
+        } catch {
+            setSubmitError('Failed to submit request. Please try again.')
+        } finally {
+            setSubmitLoading(false)
+        }
+    }
+
     useEffect(() => {
         if (isOpec) {
             setValue('currency', 'USD')
@@ -61,24 +81,17 @@ const FinancingRequest = () => {
         void fetchData()
     }, [])
 
-    const onSubmit = async (formData: z.infer<typeof FinancingRequestSchema>) => {
-        setSubmitSuccess(null)
-        setSubmitError(null)
-        setSubmitLoading(true)
-        try {
-            const response = await submitFinancingRequest(formData)
-            if (response?.data?.message === 'success') {
-                setSubmitSuccess('Request submitted successfully!')
-                reset(INITIAL_FINANCING_REQUEST_STATE)
-            } else {
-                setSubmitError('Unexpected response from server.')
-            }
-        } catch {
-            setSubmitError('Failed to submit request. Please try again.')
-        } finally {
-            setSubmitLoading(false)
-        }
-    }
+    useEffect(() => {
+        if (apiError) toast.error(apiError)
+    }, [apiError])
+
+    useEffect(() => {
+        if (submitSuccess) toast.success(submitSuccess)
+    }, [submitSuccess])
+
+    useEffect(() => {
+        if (submitError) toast.error(submitError)
+    }, [submitError])
 
     if (loading) {
         return (
@@ -93,9 +106,6 @@ const FinancingRequest = () => {
             <Typography variant="h4" mb={2}>
                 Financing Request
             </Typography>
-            {apiError && <Alert severity="error">{apiError}</Alert>}
-            {submitSuccess && <Alert severity="success">{submitSuccess}</Alert>}
-            {submitError && <Alert severity="error">{submitError}</Alert>}
             <Stack
                 spacing={2}
                 component="form"
