@@ -15,10 +15,14 @@ const minDate = new Date(today)
 minDate.setDate(today.getDate() + 15)
 
 const FinancingRequest = () => {
-    const [countries, setCountries] = useState<Country[]>([])
-    const [currencies, setCurrencies] = useState<string[]>([])
-    const [loading, setLoading] = useState(false)
-    const [apiError, setApiError] = useState<string | null>(null)
+    const [apiState, setApiState] = useState({
+        loading: false,
+        error: null as string | null,
+        data: {
+            countries: [] as Country[],
+            currencies: [] as string[],
+        },
+    })
     const [submitLoading, setSubmitLoading] = useState(false)
 
     const {
@@ -62,26 +66,37 @@ const FinancingRequest = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            setLoading(true)
-            setApiError(null)
+            setApiState({
+                loading: true,
+                error: null,
+                data: {
+                    countries: [],
+                    currencies: [],
+                },
+            })
             try {
                 const { countries, currencies } = await fetchCountriesAndCurrencies()
-                setCountries(countries)
-                setCurrencies(currencies)
+                setApiState({ loading: false, error: null, data: { countries, currencies } })
             } catch {
-                setApiError('Failed to load country/currency data')
+                setApiState({
+                    loading: false,
+                    error: 'Failed to load country/currency data',
+                    data: { countries: [], currencies: [] },
+                })
             } finally {
-                setLoading(false)
+                setApiState((prev) => ({ ...prev, loading: false }))
             }
         }
         void fetchData()
     }, [])
 
     useEffect(() => {
-        if (apiError) toast.error(apiError)
-    }, [apiError])
+        if (apiState.error) {
+            toast.error(apiState.error)
+        }
+    }, [apiState.error])
 
-    if (loading) {
+    if (apiState.loading) {
         return (
             <Box maxWidth={500} mx="auto" mt={4} textAlign="center">
                 <CircularProgress />
@@ -120,7 +135,7 @@ const FinancingRequest = () => {
                     error={!!errors.countryCode}
                     helperText={errors.countryCode?.message}
                 >
-                    {countries.map((c) => (
+                    {apiState.data.countries.map((c) => (
                         <MenuItem key={c.code} value={c.code}>
                             {c.name}
                         </MenuItem>
@@ -168,7 +183,7 @@ const FinancingRequest = () => {
                         helperText={errors.currency?.message}
                         disabled={isOpec}
                     >
-                        {currencies.map((c) => (
+                        {apiState.data.currencies.map((c) => (
                             <MenuItem key={c} value={c}>
                                 {c}
                             </MenuItem>
