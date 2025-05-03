@@ -18,6 +18,7 @@ const FinancingRequest = () => {
     const [currencies, setCurrencies] = useState<string[]>([])
     const [loading, setLoading] = useState(false)
     const [apiError, setApiError] = useState<string | null>(null)
+    const [submitLoading, setSubmitLoading] = useState(false)
     const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
     const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -63,6 +64,7 @@ const FinancingRequest = () => {
     const onSubmit = async (formData: z.infer<typeof FinancingRequestSchema>) => {
         setSubmitSuccess(null)
         setSubmitError(null)
+        setSubmitLoading(true)
         try {
             const response = await submitFinancingRequest(formData)
             if (response?.data?.message === 'success') {
@@ -73,6 +75,8 @@ const FinancingRequest = () => {
             }
         } catch {
             setSubmitError('Failed to submit request. Please try again.')
+        } finally {
+            setSubmitLoading(false)
         }
     }
 
@@ -180,7 +184,10 @@ const FinancingRequest = () => {
                         fullWidth
                         required
                         type="date"
-                        slotProps={{ inputLabel: { shrink: true } }}
+                        slotProps={{
+                            inputLabel: { shrink: true },
+                            htmlInput: { min: minDate.toISOString().split('T')[0] },
+                        }}
                         error={!!errors.date}
                         helperText={errors.date?.message}
                     />
@@ -201,8 +208,15 @@ const FinancingRequest = () => {
                         ))}
                     </TextField>
                 </Stack>
-                <Button variant="contained" color="primary" fullWidth type="submit" disabled={!isValid}>
-                    Submit
+                <Button
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    type="submit"
+                    disabled={!isValid || submitLoading}
+                    startIcon={submitLoading ? <CircularProgress size={20} color="inherit" /> : null}
+                >
+                    {submitLoading ? 'Submitting...' : 'Submit'}
                 </Button>
             </Stack>
         </Box>
