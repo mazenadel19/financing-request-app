@@ -1,32 +1,43 @@
-import { Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
-import { useState } from 'react'
-
-const initialState = {
-    fullName: '',
-    countryCode: '',
-    projectCode: '',
-    description: '',
-    amount: '',
-    currency: '',
-    date: '',
-    validityPeriod: '',
-}
+import { INITIAL_FINANCING_REQUEST_STATE } from '@/constants/financing-request'
+import { Country, fetchCountriesAndCurrencies } from '@/services/endpoints/country'
+import { Alert, Box, Button, CircularProgress, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { useEffect, useState } from 'react'
 
 const FinancingRequest = () => {
-    const [form, setForm] = useState(initialState)
+    const [form, setForm] = useState(INITIAL_FINANCING_REQUEST_STATE)
+    const [countries, setCountries] = useState<Country[]>([])
+    const [currencies, setCurrencies] = useState<string[]>([])
+    const [loading, setLoading] = useState(false)
+    const [apiError, setApiError] = useState<string | null>(null)
 
-    const countries = [
-        { code: 'US', name: 'United States' },
-        { code: 'SA', name: 'Saudi Arabia' },
-    ]
-    const currencies = [
-        { code: 'USD', name: 'US Dollar' },
-        { code: 'EUR', name: 'Euro' },
-    ]
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true)
+            setApiError(null)
+            try {
+                const { countries, currencies } = await fetchCountriesAndCurrencies()
+                setCountries(countries)
+                setCurrencies(currencies)
+            } catch {
+                setApiError('Failed to load country/currency data')
+            } finally {
+                setLoading(false)
+            }
+        }
+        void fetchData()
+    }, [])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
         setForm((prev) => ({ ...prev, [name]: value }))
+    }
+
+    if (loading) {
+        return (
+            <Box maxWidth={500} mx="auto" mt={4} textAlign="center">
+                <CircularProgress />
+            </Box>
+        )
     }
 
     return (
@@ -34,6 +45,7 @@ const FinancingRequest = () => {
             <Typography variant="h4" mb={2}>
                 Financing Request
             </Typography>
+            {apiError && <Alert severity="error">{apiError}</Alert>}
             <Stack spacing={2} component="form" autoComplete="off">
                 <TextField
                     label="Full Name"
@@ -76,9 +88,7 @@ const FinancingRequest = () => {
                     required
                     multiline
                     rows={2}
-                    slotProps={{
-                        htmlInput: { maxLength: 4 },
-                    }}
+                    slotProps={{ htmlInput: { maxLength: 150 } }}
                 />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                     <TextField
@@ -101,8 +111,8 @@ const FinancingRequest = () => {
                         required
                     >
                         {currencies.map((c) => (
-                            <MenuItem key={c.code} value={c.code}>
-                                {c.name}
+                            <MenuItem key={c} value={c}>
+                                {c}
                             </MenuItem>
                         ))}
                     </TextField>

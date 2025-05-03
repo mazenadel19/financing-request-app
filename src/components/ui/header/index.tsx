@@ -17,14 +17,12 @@ import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 // constants
 import { CONSTANTS } from '@/constants'
+import { NAV_ITEMS } from '@/constants/nav'
 // styles
 import styles from './index.module.css'
 
 const drawerWidth = 240
-const navItems = [
-    { text: 'Home', pathname: '/' },
-    { text: 'Financing Request', pathname: 'financing-request' },
-]
+const navItems = NAV_ITEMS
 
 export function Header() {
     const [mobileOpen, setMobileOpen] = useState(false)
