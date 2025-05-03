@@ -3,9 +3,10 @@ import { Country, fetchCountriesAndCurrencies } from '@/services/endpoints/count
 import { submitFinancingRequest } from '@/services/endpoints/financing-request'
 import { FinancingRequestSchema } from '@/validation/financing-request'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, Box, Button, CircularProgress, MenuItem, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, CircularProgress, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'react-toastify'
 import { z } from 'zod'
 
 const today = new Date()
@@ -14,12 +15,15 @@ const minDate = new Date(today)
 minDate.setDate(today.getDate() + 15)
 
 const FinancingRequest = () => {
-    const [countries, setCountries] = useState<Country[]>([])
-    const [currencies, setCurrencies] = useState<string[]>([])
-    const [loading, setLoading] = useState(false)
-    const [apiError, setApiError] = useState<string | null>(null)
-    const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
-    const [submitError, setSubmitError] = useState<string | null>(null)
+    const [apiState, setApiState] = useState({
+        loading: false,
+        error: null as string | null,
+        data: {
+            countries: [] as Country[],
+            currencies: [] as string[],
+        },
+    })
+    const [submitLoading, setSubmitLoading] = useState(false)
 
     const {
         register,
@@ -37,6 +41,23 @@ const FinancingRequest = () => {
     const watchedCountry = watch('countryCode')
     const isOpec = OPEC_COUNTRIES.includes(watchedCountry)
 
+    const onSubmit = async (formData: z.infer<typeof FinancingRequestSchema>) => {
+        setSubmitLoading(true)
+        try {
+            const response = await submitFinancingRequest(formData)
+            if (response?.data?.message === 'success') {
+                toast.success('Request submitted successfully!')
+                reset(INITIAL_FINANCING_REQUEST_STATE)
+            } else {
+                toast.error('Unexpected response from server.')
+            }
+        } catch {
+            toast.error('Failed to submit request. Please try again.')
+        } finally {
+            setSubmitLoading(false)
+        }
+    }
+
     useEffect(() => {
         if (isOpec) {
             setValue('currency', 'USD')
@@ -45,38 +66,37 @@ const FinancingRequest = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            setLoading(true)
-            setApiError(null)
+            setApiState({
+                loading: true,
+                error: null,
+                data: {
+                    countries: [],
+                    currencies: [],
+                },
+            })
             try {
                 const { countries, currencies } = await fetchCountriesAndCurrencies()
-                setCountries(countries)
-                setCurrencies(currencies)
+                setApiState({ loading: false, error: null, data: { countries, currencies } })
             } catch {
-                setApiError('Failed to load country/currency data')
+                setApiState({
+                    loading: false,
+                    error: 'Failed to load country/currency data',
+                    data: { countries: [], currencies: [] },
+                })
             } finally {
-                setLoading(false)
+                setApiState((prev) => ({ ...prev, loading: false }))
             }
         }
         void fetchData()
     }, [])
 
-    const onSubmit = async (formData: z.infer<typeof FinancingRequestSchema>) => {
-        setSubmitSuccess(null)
-        setSubmitError(null)
-        try {
-            const response = await submitFinancingRequest(formData)
-            if (response?.data?.message === 'success') {
-                setSubmitSuccess('Request submitted successfully!')
-                reset(INITIAL_FINANCING_REQUEST_STATE)
-            } else {
-                setSubmitError('Unexpected response from server.')
-            }
-        } catch {
-            setSubmitError('Failed to submit request. Please try again.')
+    useEffect(() => {
+        if (apiState.error) {
+            toast.error(apiState.error)
         }
-    }
+    }, [apiState.error])
 
-    if (loading) {
+    if (apiState.loading) {
         return (
             <Box maxWidth={500} mx="auto" mt={4} textAlign="center">
                 <CircularProgress />
@@ -89,9 +109,6 @@ const FinancingRequest = () => {
             <Typography variant="h4" mb={2}>
                 Financing Request
             </Typography>
-            {apiError && <Alert severity="error">{apiError}</Alert>}
-            {submitSuccess && <Alert severity="success">{submitSuccess}</Alert>}
-            {submitError && <Alert severity="error">{submitError}</Alert>}
             <Stack
                 spacing={2}
                 component="form"
@@ -118,7 +135,7 @@ const FinancingRequest = () => {
                     error={!!errors.countryCode}
                     helperText={errors.countryCode?.message}
                 >
-                    {countries.map((c) => (
+                    {apiState.data.countries.map((c) => (
                         <MenuItem key={c.code} value={c.code}>
                             {c.name}
                         </MenuItem>
@@ -166,7 +183,7 @@ const FinancingRequest = () => {
                         helperText={errors.currency?.message}
                         disabled={isOpec}
                     >
-                        {currencies.map((c) => (
+                        {apiState.data.currencies.map((c) => (
                             <MenuItem key={c} value={c}>
                                 {c}
                             </MenuItem>
@@ -180,7 +197,10 @@ const FinancingRequest = () => {
                         fullWidth
                         required
                         type="date"
-                        slotProps={{ inputLabel: { shrink: true } }}
+                        slotProps={{
+                            inputLabel: { shrink: true },
+                            htmlInput: { min: minDate.toISOString().split('T')[0] },
+                        }}
                         error={!!errors.date}
                         helperText={errors.date?.message}
                     />
@@ -201,8 +221,15 @@ const FinancingRequest = () => {
                         ))}
                     </TextField>
                 </Stack>
-                <Button variant="contained" color="primary" fullWidth type="submit" disabled={!isValid}>
-                    Submit
+                <Button
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    type="submit"
+                    disabled={!isValid || submitLoading}
+                    startIcon={submitLoading ? <CircularProgress size={20} color="inherit" /> : null}
+                >
+                    {submitLoading ? 'Submitting...' : 'Submit'}
                 </Button>
             </Stack>
         </Box>
