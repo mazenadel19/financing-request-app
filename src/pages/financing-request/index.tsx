@@ -20,8 +20,6 @@ const FinancingRequest = () => {
     const [loading, setLoading] = useState(false)
     const [apiError, setApiError] = useState<string | null>(null)
     const [submitLoading, setSubmitLoading] = useState(false)
-    const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
-    const [submitError, setSubmitError] = useState<string | null>(null)
 
     const {
         register,
@@ -40,19 +38,17 @@ const FinancingRequest = () => {
     const isOpec = OPEC_COUNTRIES.includes(watchedCountry)
 
     const onSubmit = async (formData: z.infer<typeof FinancingRequestSchema>) => {
-        setSubmitSuccess(null)
-        setSubmitError(null)
         setSubmitLoading(true)
         try {
             const response = await submitFinancingRequest(formData)
             if (response?.data?.message === 'success') {
-                setSubmitSuccess('Request submitted successfully!')
+                toast.success('Request submitted successfully!')
                 reset(INITIAL_FINANCING_REQUEST_STATE)
             } else {
-                setSubmitError('Unexpected response from server.')
+                toast.error('Unexpected response from server.')
             }
         } catch {
-            setSubmitError('Failed to submit request. Please try again.')
+            toast.error('Failed to submit request. Please try again.')
         } finally {
             setSubmitLoading(false)
         }
@@ -84,14 +80,6 @@ const FinancingRequest = () => {
     useEffect(() => {
         if (apiError) toast.error(apiError)
     }, [apiError])
-
-    useEffect(() => {
-        if (submitSuccess) toast.success(submitSuccess)
-    }, [submitSuccess])
-
-    useEffect(() => {
-        if (submitError) toast.error(submitError)
-    }, [submitError])
 
     if (loading) {
         return (
