@@ -8,10 +8,19 @@ export interface Country {
     currencies: string[]
 }
 
+export interface NativeName {
+    official: string
+    common: string
+}
+export interface Currency {
+    name: string
+    symbol: string
+}
+
 interface RestCountry {
     cca2: string
-    name: { common: string }
-    currencies?: Record<string, unknown>
+    name: { common: string; official: string; nativeName: Record<string, NativeName> }
+    currencies: Record<string, Currency>
 }
 
 export async function fetchCountriesAndCurrencies(): Promise<{ countries: Country[]; currencies: string[] }> {
