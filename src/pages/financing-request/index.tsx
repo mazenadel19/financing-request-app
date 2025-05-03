@@ -1,10 +1,12 @@
 import { INITIAL_FINANCING_REQUEST_STATE, OPEC_COUNTRIES } from '@/constants/financing-request'
 import { Country, fetchCountriesAndCurrencies } from '@/services/endpoints/country'
+import { submitFinancingRequest } from '@/services/endpoints/financing-request'
 import { FinancingRequestSchema } from '@/validation/financing-request'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Alert, Box, Button, CircularProgress, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { z } from 'zod'
 
 const today = new Date()
 today.setHours(0, 0, 0, 0)
@@ -16,6 +18,8 @@ const FinancingRequest = () => {
     const [currencies, setCurrencies] = useState<string[]>([])
     const [loading, setLoading] = useState(false)
     const [apiError, setApiError] = useState<string | null>(null)
+    const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
+    const [submitError, setSubmitError] = useState<string | null>(null)
 
     const {
         register,
@@ -23,6 +27,7 @@ const FinancingRequest = () => {
         formState: { errors, isValid },
         setValue,
         watch,
+        reset,
     } = useForm({
         resolver: zodResolver(FinancingRequestSchema),
         mode: 'onChange',
@@ -55,8 +60,20 @@ const FinancingRequest = () => {
         void fetchData()
     }, [])
 
-    const onSubmit = () => {
-        console.log('Form submitted:', watch())
+    const onSubmit = async (formData: z.infer<typeof FinancingRequestSchema>) => {
+        setSubmitSuccess(null)
+        setSubmitError(null)
+        try {
+            const response = await submitFinancingRequest(formData)
+            if (response?.data?.message === 'success') {
+                setSubmitSuccess('Request submitted successfully!')
+                reset(INITIAL_FINANCING_REQUEST_STATE)
+            } else {
+                setSubmitError('Unexpected response from server.')
+            }
+        } catch {
+            setSubmitError('Failed to submit request. Please try again.')
+        }
     }
 
     if (loading) {
@@ -73,6 +90,8 @@ const FinancingRequest = () => {
                 Financing Request
             </Typography>
             {apiError && <Alert severity="error">{apiError}</Alert>}
+            {submitSuccess && <Alert severity="success">{submitSuccess}</Alert>}
+            {submitError && <Alert severity="error">{submitError}</Alert>}
             <Stack
                 spacing={2}
                 component="form"
