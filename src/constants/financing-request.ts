@@ -10,7 +10,7 @@ export const INITIAL_FINANCING_REQUEST_STATE = {
 }
 export const OPEC_COUNTRIES = [
     'AE', // United Arab Emirates
-    'AL', // Algeria
+    'DZ', // Algeria
     'AO', // Angola
     'IQ', // Iraq
     'IR', // Iran
